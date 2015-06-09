@@ -73,15 +73,13 @@ object SimpleExample {
     val stateDstream = wordDstream.updateStateByKey[Int](newUpdateFunc,
       new HashPartitioner (ssc.sparkContext.defaultParallelism), true).cache()
     stateDstream.print(100)
-    stateDstream.foreachRDD(r => r.foreach(u => {
-      // TODO Create a kafka producer singleton.
-      val bsServers = new util.ArrayList[String]()
-      bsServers.add("localhost:9092")
-      val kafkaProducerParams = new util.HashMap[String, java.lang.Object]()
-      kafkaProducerParams.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bsServers)
-      val kp = new KafkaProducer[String, String](kafkaProducerParams, new StringSerializer, new StringSerializer)
-      kp.send(new ProducerRecord[String, String]("trending", u.toString()))
-    }))
+    stateDstream.foreachRDD(r => {
+      val counter = 1
+      val producer = SingleKafkaProducer.getProducer
+      r.foreach(u => {
+      })
+      producer.send("trending", r.collect().sortWith(_._2 > _._2).mkString(","))
+    })
     // Start the computation
     ssc.start()
     ssc.awaitTermination()
