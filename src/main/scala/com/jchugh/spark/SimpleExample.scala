@@ -72,13 +72,21 @@ object SimpleExample {
 
     val stateDstream = wordDstream.updateStateByKey[Int](newUpdateFunc,
       new HashPartitioner (ssc.sparkContext.defaultParallelism), true).cache()
-    stateDstream.print(100)
+    var counter = 0
     stateDstream.foreachRDD(r => {
-      val counter = 1
       val producer = SingleKafkaProducer.getProducer
+      counter += 1
+
       r.foreach(u => {
       })
-      producer.send("trending", r.collect().sortWith(_._2 > _._2).mkString(","))
+
+      if (counter >= 20) {
+        producer.send("trending", r.sortBy(_._2, false).take(10).mkString(","))
+        counter = 0
+      } else {
+        producer.send("trending", r.sortBy(_._2, false).collect().mkString(","))
+      }
+
     })
     // Start the computation
     ssc.start()
